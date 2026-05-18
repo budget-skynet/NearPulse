@@ -178,11 +178,19 @@ def fetch_contract_meta(contract_id):
     return meta
 
 
-def register_nft_routes(app, cached_fn=None, set_cache_fn=None):
+def register_nft_routes(app, cached_fn=None, set_cache_fn=None, validate_account_id_fn=None):
+
+    def _validate(account_id):
+        if validate_account_id_fn and not validate_account_id_fn(account_id):
+            return jsonify({"error": "Invalid NEAR account ID"}), 400
+        return None
 
     @app.route("/api/nfts/<account_id>")
     @app.route("/api/nft/<account_id>")
     def api_nft_contracts(account_id):
+        err = _validate(account_id)
+        if err:
+            return err
         page     = request.args.get("page", 1, type=int)
         # Accept both `limit` and `per_page`; default 20, cap 50
         per_page = min(
@@ -205,10 +213,16 @@ def register_nft_routes(app, cached_fn=None, set_cache_fn=None):
 
     @app.route("/api/nft-tokens/<account_id>")
     def api_nft_tokens_all(account_id):
+        err = _validate(account_id)
+        if err:
+            return err
         page     = request.args.get("page", 1, type=int)
         per_page = min(request.args.get("per_page", 24, type=int), 48)
         return jsonify(fetch_all_nfts_paged(account_id, page, per_page))
 
     @app.route("/api/nft-meta/<account_id>/<path:contract_id>")
     def api_nft_meta(account_id, contract_id):
+        err = _validate(account_id)
+        if err:
+            return err
         return jsonify({"contract": contract_id, **fetch_contract_meta(contract_id)})

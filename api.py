@@ -3,6 +3,7 @@ NearPulse Flask API — REST endpoints for Telegram Mini App.
 v2.1.0 — Fixed bugs + AI Chat Agent endpoint.
 """
 import os
+import re
 import json
 import time
 import base64
@@ -24,6 +25,17 @@ def safe_get(obj, key, default=0):
     if isinstance(obj, dict):
         return obj.get(key, default)
     return default
+
+
+# Named account: a-z0-9_.- , 2-64 chars, no leading/trailing special chars
+# Implicit account: exactly 64 hex chars (public key hash)
+_NAMED_RE    = re.compile(r'^[a-z0-9][a-z0-9_.\-]{0,62}[a-z0-9]$')
+_IMPLICIT_RE = re.compile(r'^[0-9a-f]{64}$')
+
+def validate_account_id(account_id):
+    if not account_id or len(account_id) > 64:
+        return False
+    return bool(_NAMED_RE.match(account_id) or _IMPLICIT_RE.match(account_id))
 
 
 app = Flask(__name__)
@@ -939,6 +951,8 @@ def call_anthropic_api(messages, system_prompt, max_tokens=800):
 # ─── API Endpoints ─────────────────────────────────────────────────────────
 @app.route("/api/balance/<account_id>")
 def api_balance(account_id):
+    if not validate_account_id(account_id):
+        return jsonify({"error": "Invalid NEAR account ID"}), 400
     cache_key = f"balance:{account_id}"
     c = cached(cache_key)
     if c:
@@ -979,6 +993,8 @@ def api_balance(account_id):
 
 @app.route("/api/transactions/<account_id>")
 def api_transactions(account_id):
+    if not validate_account_id(account_id):
+        return jsonify({"error": "Invalid NEAR account ID"}), 400
     cache_key = f"txns:{account_id}"
     if not request.args.get("_") and not request.args.get("nocache"):
         c = cached(cache_key)
@@ -1018,6 +1034,8 @@ def api_transactions(account_id):
 
 @app.route("/api/stats/<account_id>")
 def api_stats(account_id):
+    if not validate_account_id(account_id):
+        return jsonify({"error": "Invalid NEAR account ID"}), 400
     cache_key = f"stats:{account_id}"
     c = cached(cache_key)
     if c:
@@ -1141,7 +1159,7 @@ def health():
 # ─── NFT routes (пагинация + ленивые метаданные) ──────────────────────────
 try:
     from nft_module import register_nft_routes
-    register_nft_routes(app, cached, set_cache)
+    register_nft_routes(app, cached, set_cache, validate_account_id)
     print("[NFT] Paginated NFT routes registered")
 except ImportError:
     print("[NFT] nft_module.py not found, using built-in /api/nft/ endpoint")
@@ -1154,11 +1172,8 @@ except ImportError:
 
 @app.route("/api/portfolio-history/<account_id>")
 def api_portfolio_history(account_id):
-    """
-    История баланса NEAR для графика в webapp.
-    Берём транзакции за период и считаем приблизительный баланс.
-    period: 7d | 14d | 30d
-    """
+    if not validate_account_id(account_id):
+        return jsonify({"error": "Invalid NEAR account ID"}), 400
     period = request.args.get("period", "7d")
     days_map = {"7d": 7, "14d": 14, "30d": 30}
     days = days_map.get(period, 7)
