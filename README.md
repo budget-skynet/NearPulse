@@ -2,4 +2,4 @@
 
 NEAR blockchain monitoring tool.
 
-<!-- patch-2 -->
+<!-- patch-3 -->
