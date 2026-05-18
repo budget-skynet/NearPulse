@@ -50,7 +50,7 @@ CORS(app, origins=[
     "http://localhost:5173",
     "http://localhost:3000",
     "http://127.0.0.1:5173",
-], supports_credentials=False)
+], supports_credentials=False, expose_headers=["X-Cache"])
 
 # ─── Constants ─────────────────────────────────────────────────────────────
 NEAR_RPC_URL      = "https://rpc.mainnet.near.org"
@@ -173,6 +173,13 @@ def set_cache(key, data, ttl=CACHE_TTL):
             _redis_client.setex(f"np:{key}", ttl, json.dumps(data, default=str))
         except Exception:
             pass
+
+
+def resp(data, hit=False):
+    """Return jsonify(data) with X-Cache: HIT or MISS header."""
+    r = jsonify(data)
+    r.headers["X-Cache"] = "HIT" if hit else "MISS"
+    return r
 
 
 # ─── HTTP with retry ───────────────────────────────────────────────────────
@@ -985,7 +992,7 @@ def api_balance(account_id):
     cache_key = f"balance:{account_id}"
     c = cached(cache_key)
     if c:
-        return jsonify(c)
+        return resp(c, hit=True)
     try:
         balance = get_balance(account_id)
         staking = get_staking_balance(account_id)
@@ -1015,7 +1022,7 @@ def api_balance(account_id):
             "tokens": tokens,
         }
         set_cache(cache_key, result)
-        return jsonify(result)
+        return resp(result)
     except Exception as e:
         status = 503 if isinstance(e, ExternalServiceError) else 500
         return jsonify({"error": str(e)}), status
@@ -1029,7 +1036,7 @@ def api_transactions(account_id):
     if not request.args.get("_") and not request.args.get("nocache"):
         c = cached(cache_key)
         if c:
-            return jsonify(c)
+            return resp(c, hit=True)
     try:
         limit = request.args.get("limit", 20, type=int)
         limit = min(max(limit, 1), 50)
@@ -1057,7 +1064,7 @@ def api_transactions(account_id):
             "total": len(analyzed),
         }
         set_cache(cache_key, result)
-        return jsonify(result)
+        return resp(result)
     except Exception as e:
         status = 503 if isinstance(e, ExternalServiceError) else 500
         return jsonify({"error": str(e)}), status
@@ -1070,7 +1077,7 @@ def api_stats(account_id):
     cache_key = f"stats:{account_id}"
     c = cached(cache_key)
     if c:
-        return jsonify(c)
+        return resp(c, hit=True)
     try:
         txns = get_transaction_history(account_id)
         near_price = get_near_price()
@@ -1091,7 +1098,7 @@ def api_stats(account_id):
         stats = compute_analytics(analyzed, near_price)
         stats["nearPrice"] = near_price
         set_cache(cache_key, stats)
-        return jsonify(stats)
+        return resp(stats)
     except Exception as e:
         status = 503 if isinstance(e, ExternalServiceError) else 500
         return jsonify({"error": str(e)}), status
@@ -1214,7 +1221,7 @@ def api_portfolio_history(account_id):
     cache_key = f"portfolio_history:{account_id}:{period}"
     cached_data = cached(cache_key)
     if cached_data:
-        return jsonify(cached_data)
+        return resp(cached_data, hit=True)
 
     try:
         # Получаем текущий баланс
@@ -1311,18 +1318,19 @@ def api_portfolio_history(account_id):
             "history":    history,
         }
         set_cache(cache_key, result, 300)  # 5 минут
-        return jsonify(result)
+        return resp(result)
 
     except Exception as e:
         print(f"[portfolio_history] Error: {e}")
-        return jsonify({"account": account_id, "period": period, "history": [], "error": str(e)}), 500
+        status = 503 if isinstance(e, ExternalServiceError) else 500
+        return jsonify({"account": account_id, "period": period, "history": [], "error": str(e)}), status
 # ─── Market endpoints (DexScreener proxy) ─────────────────────────────────
 @app.route("/api/market/near")
 def api_market_near():
     cache_key = "market_near"
     c = cached(cache_key)
     if c:
-        return jsonify(c)
+        return resp(c, hit=True)
     try:
         r = fetch_with_retry(
             "https://api.dexscreener.com/latest/dex/search",
@@ -1333,7 +1341,7 @@ def api_market_near():
         pairs = [p for p in (data.get("pairs") or []) if p.get("chainId") == "near"]
         result = {"pairs": pairs}
         set_cache(cache_key, result, 120)
-        return jsonify(result)
+        return resp(result)
     except Exception as e:
         return jsonify({"error": str(e), "pairs": []}), 500
 
@@ -1343,7 +1351,7 @@ def api_market_new_tokens():
     cache_key = "market_new_tokens"
     c = cached(cache_key)
     if c:
-        return jsonify(c)
+        return resp(c, hit=True)
     try:
         r = fetch_with_retry(
             "https://api.dexscreener.com/token-profiles/latest/v1",
@@ -1356,7 +1364,7 @@ def api_market_new_tokens():
             near_tokens = []
         result = {"tokens": near_tokens}
         set_cache(cache_key, result, 300)
-        return jsonify(result)
+        return resp(result)
     except Exception as e:
         return jsonify({"error": str(e), "tokens": []}), 500
 

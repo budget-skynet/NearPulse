@@ -8,7 +8,9 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://nearpulse.o
 export async function fetchUserBalance(address) {
   const response = await fetch(`${API_BASE_URL}/api/balance/${address}`);
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-  return response.json();
+  const data = await response.json();
+  data._fromCache = response.headers.get('X-Cache') === 'HIT';
+  return data;
 }
 
 export async function fetchTransactions(address, limit = 10) {

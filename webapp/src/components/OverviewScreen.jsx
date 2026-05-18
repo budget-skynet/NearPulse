@@ -295,10 +295,15 @@ export default function OverviewScreen({ selectedPeriod, onPeriodChange, balance
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {lastUpdated && (
-                  <span style={{ fontSize: 10, opacity: 0.5 }}>
-                    {Math.floor((Date.now() - lastUpdated) / 60000) < 1
-                      ? 'только что'
-                      : `${Math.floor((Date.now() - lastUpdated) / 60000)} мин назад`}
+                  <span style={{
+                    fontSize: 10, opacity: 0.5,
+                    ...(balanceData?._fromCache ? { color: 'var(--color-warning)' } : {}),
+                  }}>
+                    {balanceData?._fromCache
+                      ? 'из кеша'
+                      : Math.floor((Date.now() - lastUpdated) / 60000) < 1
+                        ? 'только что'
+                        : `${Math.floor((Date.now() - lastUpdated) / 60000)} мин назад`}
                   </span>
                 )}
                 <Info size={16} style={{ opacity: 0.5 }} />
