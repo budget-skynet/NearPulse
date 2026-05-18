@@ -175,6 +175,27 @@ def set_cache(key, data, ttl=CACHE_TTL):
             pass
 
 
+# ─── HTTP with retry ───────────────────────────────────────────────────────
+def fetch_with_retry(url, *, retries=2, backoff=0.5, **kwargs):
+    """GET request with exponential backoff. Retries on 5xx and network errors."""
+    last_exc = None
+    for attempt in range(retries + 1):
+        try:
+            r = http_requests.get(url, **kwargs)
+            if r.status_code < 500:
+                return r
+            if attempt < retries:
+                time.sleep(backoff * (2 ** attempt))
+        except (http_requests.exceptions.Timeout,
+                http_requests.exceptions.ConnectionError) as e:
+            last_exc = e
+            if attempt < retries:
+                time.sleep(backoff * (2 ** attempt))
+    if last_exc:
+        raise last_exc
+    return r
+
+
 # ─── NEAR Data Functions ───────────────────────────────────────────────────
 def get_balance(address):
     try:
@@ -210,7 +231,7 @@ def get_near_price():
         return c
     price = 0
     try:
-        r = http_requests.get(
+        r = fetch_with_retry(
             f"{INTEAR_API}/get-token-price",
             params={"token_id": "wrap.near"},
             timeout=API_TIMEOUT,
@@ -227,7 +248,7 @@ def get_near_price():
     except Exception as e:
         print(f"[get_near_price] Intear: {e}")
     try:
-        r = http_requests.get(
+        r = fetch_with_retry(
             f"{COINGECKO_API}/simple/price",
             params={"ids": "near", "vs_currencies": "usd"},
             timeout=API_TIMEOUT,
@@ -245,7 +266,7 @@ def get_near_price():
 def get_staking_balance(address):
     try:
         url = f"{NEARBLOCKS_API}/kitwallet/staking-deposits/{http_requests.utils.quote(address)}"
-        r = http_requests.get(url, headers=nearblocks_headers(), timeout=API_TIMEOUT)
+        r = fetch_with_retry(url, headers=nearblocks_headers(), timeout=API_TIMEOUT)
         data = r.json()
         deposits = data if isinstance(data, list) else data.get("data", data.get("deposits", []))
         if not isinstance(deposits, list):
@@ -331,7 +352,7 @@ def get_hot_claim_status(address):
 def get_all_tokens(address):
     try:
         url = f"{NEARBLOCKS_API}/account/{address}/inventory"
-        r = http_requests.get(url, headers=nearblocks_headers(), timeout=API_TIMEOUT)
+        r = fetch_with_retry(url, headers=nearblocks_headers(), timeout=API_TIMEOUT)
         tokens = r.json().get("inventory", {}).get("fts", [])
         result = []
         for t in tokens:
@@ -382,7 +403,7 @@ def get_coingecko_prices(contracts):
                 ids.add(gid)
         if not ids:
             return {}
-        r = http_requests.get(
+        r = fetch_with_retry(
             f"{COINGECKO_API}/simple/price",
             params={"ids": ",".join(ids), "vs_currencies": "usd"},
             timeout=API_TIMEOUT,
@@ -402,7 +423,7 @@ def get_coingecko_prices(contracts):
 
 def get_ref_finance_prices(contracts):
     try:
-        r = http_requests.get(f"{REF_FINANCE_API}/list-token-price", timeout=API_TIMEOUT)
+        r = fetch_with_retry(f"{REF_FINANCE_API}/list-token-price", timeout=API_TIMEOUT)
         ref_prices = r.json() or {}
         prices = {}
         for c in contracts:
@@ -422,7 +443,7 @@ def get_ref_finance_prices(contracts):
 
 def get_intear_prices(contracts):
     try:
-        r = http_requests.get(f"{INTEAR_API}/list-token-price", timeout=API_TIMEOUT)
+        r = fetch_with_retry(f"{INTEAR_API}/list-token-price", timeout=API_TIMEOUT)
         intear_data = r.json() or {}
         prices = {}
         for c in contracts:
@@ -497,7 +518,7 @@ def get_tokens_with_prices(address, min_usd=0.01):
 def get_token_balance(address, token_id="game.hot.tg"):
     try:
         url = f"{NEARBLOCKS_API}/account/{address}/inventory"
-        r = http_requests.get(url, headers=nearblocks_headers(), timeout=API_TIMEOUT)
+        r = fetch_with_retry(url, headers=nearblocks_headers(), timeout=API_TIMEOUT)
         fts = r.json().get("inventory", {}).get("fts", [])
         token = next((t for t in fts if t.get("contract") == token_id), None)
         if token:
@@ -512,7 +533,7 @@ def get_token_balance(address, token_id="game.hot.tg"):
 def get_user_nfts(account_id):
     try:
         url = f"{FASTNEAR_API}/account/{account_id}/nft"
-        r = http_requests.get(url, timeout=API_TIMEOUT)
+        r = fetch_with_retry(url, timeout=API_TIMEOUT)
         if r.status_code != 200:
             print(f"[FastNEAR NFT] status {r.status_code}")
             return []
@@ -547,7 +568,7 @@ def get_user_nfts(account_id):
 def get_transaction_history(address):
     try:
         url = f"{NEARBLOCKS_API}/account/{address}/txns"
-        r = http_requests.get(url, params={"per_page": 50, "order": "desc"}, headers=nearblocks_headers(), timeout=API_TIMEOUT)
+        r = fetch_with_retry(url, params={"per_page": 50, "order": "desc"}, headers=nearblocks_headers(), timeout=API_TIMEOUT)
         txns = r.json().get("txns", [])
         if isinstance(txns, dict):
             txns = list(txns.values())
@@ -1206,7 +1227,7 @@ def api_portfolio_history(account_id):
         # Получаем транзакции за период для восстановления истории
         nb_key = os.environ.get("NEARBLOCKS_API_KEY", "")
         headers = {"Authorization": f"Bearer {nb_key}"} if nb_key else {}
-        r2 = http_requests.get(
+        r2 = fetch_with_retry(
             f"{NEARBLOCKS_API}/account/{account_id}/txns",
             params={"limit": 100, "order": "desc"},
             headers=headers,
@@ -1291,7 +1312,7 @@ def api_market_near():
     if c:
         return jsonify(c)
     try:
-        r = http_requests.get(
+        r = fetch_with_retry(
             "https://api.dexscreener.com/latest/dex/search",
             params={"q": "near"},
             timeout=10
@@ -1312,7 +1333,7 @@ def api_market_new_tokens():
     if c:
         return jsonify(c)
     try:
-        r = http_requests.get(
+        r = fetch_with_retry(
             "https://api.dexscreener.com/token-profiles/latest/v1",
             timeout=10
         )

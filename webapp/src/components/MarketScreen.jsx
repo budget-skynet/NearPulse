@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { API_BASE_URL } from '../services/api';
+import Skeleton from './Skeleton';
 
 const BASE_URL        = 'https://api.dexscreener.com/tokens/v1/near';
 const SEARCH_URL      = `${API_BASE_URL}/api/market/near`;
@@ -112,14 +113,6 @@ function StatCell({ label, value }) {
   );
 }
 
-function Skeleton({ width = '100%', height = 16, radius = 6, style = {} }) {
-  return (
-    <div className="shimmer" style={{
-      width, height, borderRadius: radius,
-      background: 'var(--bg-glass)', flexShrink: 0, ...style,
-    }} />
-  );
-}
 
 function SectionTitle({ children }) {
   return (
