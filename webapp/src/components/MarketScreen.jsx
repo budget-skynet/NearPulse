@@ -4,11 +4,11 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { API_BASE_URL } from '../services/api';
 
-const API_BASE        = import.meta.env.VITE_API_URL || 'https://nearpulse.onrender.com';
 const BASE_URL        = 'https://api.dexscreener.com/tokens/v1/near';
-const SEARCH_URL      = `${API_BASE}/api/market/near`;
-const PROFILES_URL    = `${API_BASE}/api/market/new-tokens`;
+const SEARCH_URL      = `${API_BASE_URL}/api/market/near`;
+const PROFILES_URL    = `${API_BASE_URL}/api/market/new-tokens`;
 const REFRESH_MS      = 60_000;
 const MIN_VOL         = 1000;
 

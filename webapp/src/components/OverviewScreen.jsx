@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Activity, Zap, Sparkles, TrendingUp, BarChart3, PieChart, Wallet, Info } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
-import { fetchAnalytics } from '../services/api';
+import { fetchAnalytics, fetchPortfolioHistory } from '../services/api';
 import { useTelegram } from '../hooks/useTelegram';
 import { useTheme } from '../contexts/ThemeContext';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'https://nearpulse.onrender.com';
 
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
@@ -29,8 +27,7 @@ function PortfolioChart({ address }) {
   useEffect(() => {
     if (!address) return;
     setLoading(true);
-    fetch(`${API_BASE}/api/portfolio-history/${address}?period=${period}`)
-      .then(r => r.json())
+    fetchPortfolioHistory(address, period)
       .then(data => {
         const points = data.history || [];
         setChartData(points);
@@ -149,6 +146,9 @@ export default function OverviewScreen({ selectedPeriod, onPeriodChange, balance
     catch { return []; }
   });
   const [contextMenu,      setContextMenu]      = useState(null); // { contract, x, y }
+  const pressTimerRef = useRef(null);
+
+  useEffect(() => () => { if (pressTimerRef.current) clearTimeout(pressTimerRef.current); }, []);
 
   const displayAddress = address || 'root.near';
 
@@ -405,15 +405,18 @@ export default function OverviewScreen({ selectedPeriod, onPeriodChange, balance
 
         if (visible.length === 0 && hidden.length === 0) return null;
 
-        // Long-press: closure timer (no hooks — TokenRow is re-created each render)
-        let pressTimer = null;
         const startPress = (contract, clientX, clientY) => {
-          pressTimer = setTimeout(
+          pressTimerRef.current = setTimeout(
             () => setContextMenu({ contract, x: clientX, y: clientY }),
             600,
           );
         };
-        const cancelPress = () => { if (pressTimer) clearTimeout(pressTimer); };
+        const cancelPress = () => {
+          if (pressTimerRef.current) {
+            clearTimeout(pressTimerRef.current);
+            pressTimerRef.current = null;
+          }
+        };
 
         const hideToken   = c => setManuallyHidden(prev => [...new Set([...prev, c])]);
         const unhideToken = c => setManuallyHidden(prev => prev.filter(x => x !== c));

@@ -4,8 +4,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { useTelegram } from '../hooks/useTelegram';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'https://nearpulse.onrender.com';
+import { API_BASE_URL as API_BASE } from '../services/api';
 const PER_PAGE = 24;
 
 function NftCard({ token }) {

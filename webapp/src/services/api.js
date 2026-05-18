@@ -3,7 +3,7 @@
  * v2.1.0 — добавлен AI chat + исправлен endpoint для NFTs
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://nearpulse.onrender.com';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://nearpulse.onrender.com';
 
 export async function fetchUserBalance(address) {
   const response = await fetch(`${API_BASE_URL}/api/balance/${address}`);
@@ -63,6 +63,12 @@ export async function fetchAnalytics(address, period = 'week') {
   return data;
 }
 
+export async function fetchPortfolioHistory(address, period = '7d') {
+  const response = await fetch(`${API_BASE_URL}/api/portfolio-history/${address}?period=${period}`);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
 // BUGFIX: исправлен endpoint с /api/nfts/ (как вызывал webapp) — теперь совпадает
 export async function fetchNFTs(address) {
   const response = await fetch(`${API_BASE_URL}/api/nfts/${address}`);
@@ -96,6 +102,7 @@ export default {
   fetchHotClaimStatus,
   checkApiHealth,
   fetchAnalytics,
+  fetchPortfolioHistory,
   fetchNFTs,
   sendAiMessage,
 };
