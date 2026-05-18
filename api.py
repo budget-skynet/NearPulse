@@ -7,6 +7,7 @@ import json
 import time
 import base64
 import math
+import threading
 import requests as http_requests
 from datetime import datetime, timezone
 from collections import defaultdict
@@ -114,6 +115,8 @@ UPSTASH_REDIS_URL = os.environ.get("UPSTASH_REDIS_URL", "")
 CACHE_TTL = 300  # 5 minutes
 _redis_client = None
 _mem_cache = {}
+_mem_cache_lock = threading.Lock()
+_last_near_price = 0
 
 try:
     if UPSTASH_REDIS_URL:
@@ -143,14 +146,16 @@ def cached(key):
                 return json.loads(raw)
         except Exception:
             pass
-    entry = _mem_cache.get(key)
-    if entry and time.time() - entry["ts"] < CACHE_TTL:
-        return entry["data"]
+    with _mem_cache_lock:
+        entry = _mem_cache.get(key)
+        if entry and time.time() - entry["ts"] < CACHE_TTL:
+            return entry["data"]
     return None
 
 
 def set_cache(key, data, ttl=CACHE_TTL):
-    _mem_cache[key] = {"data": data, "ts": time.time()}
+    with _mem_cache_lock:
+        _mem_cache[key] = {"data": data, "ts": time.time()}
     if _redis_client:
         try:
             _redis_client.setex(f"np:{key}", ttl, json.dumps(data, default=str))
@@ -187,6 +192,7 @@ def get_balance(address):
 
 
 def get_near_price():
+    global _last_near_price
     c = cached("near_price")
     if c is not None:
         return c
@@ -204,6 +210,7 @@ def get_near_price():
         if not price:
             raise ValueError("Intear returned no price")
         set_cache("near_price", price)
+        _last_near_price = price
         return price
     except Exception as e:
         print(f"[get_near_price] Intear: {e}")
@@ -216,10 +223,11 @@ def get_near_price():
         price = r.json().get("near", {}).get("usd", 0)
         if price:
             set_cache("near_price", price)
+            _last_near_price = price
         return price
     except Exception as e:
         print(f"[get_near_price] CoinGecko fallback: {e}")
-    return 0
+    return _last_near_price
 
 
 def get_staking_balance(address):
