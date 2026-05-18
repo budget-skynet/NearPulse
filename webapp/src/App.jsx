@@ -19,6 +19,8 @@ export default function App() {
   const [balanceData, setBalanceData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   const displayAddress = address || 'root.near';
 
@@ -38,6 +40,7 @@ export default function App() {
         setError(null);
         const data = await fetchUserBalance(displayAddress);
         setBalanceData(data);
+        setLastUpdated(Date.now());
       } catch (err) {
         setError(err.message);
       } finally {
@@ -45,7 +48,7 @@ export default function App() {
       }
     }
     loadBalance();
-  }, [displayAddress]);
+  }, [displayAddress, retryCount]);
 
   if (loading) {
     return (
@@ -67,7 +70,23 @@ export default function App() {
             <div className="text-2xl mb-2">⚠️</div>
             <div className="text-primary font-medium mb-1">Ошибка загрузки данных</div>
             <div className="text-secondary text-sm">{error}</div>
-            <div className="text-xs text-tertiary mt-2">Проверьте что API запущен</div>
+            <div className="text-xs text-tertiary mt-2">Сервер мог уснуть — попробуйте ещё раз</div>
+            <button
+              onClick={() => setRetryCount(c => c + 1)}
+              style={{
+                marginTop: 14,
+                padding: '8px 24px',
+                borderRadius: 'var(--radius-pill)',
+                background: 'var(--accent-gradient)',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Повторить
+            </button>
           </div>
         </div>
       </div>
@@ -83,6 +102,7 @@ export default function App() {
             selectedPeriod={selectedPeriod}
             onPeriodChange={setSelectedPeriod}
             balanceData={balanceData}
+            lastUpdated={lastUpdated}
           />
         )}
         {currentScreen === 'transactions' && <TransactionsScreen />}

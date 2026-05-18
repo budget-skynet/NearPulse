@@ -134,7 +134,7 @@ function PortfolioChart({ address }) {
   );
 }
 
-export default function OverviewScreen({ selectedPeriod, onPeriodChange, balanceData }) {
+export default function OverviewScreen({ selectedPeriod, onPeriodChange, balanceData, lastUpdated }) {
   const { address } = useTelegram();
   const { theme }   = useTheme();
   const [timeRemaining,    setTimeRemaining]    = useState('');
@@ -293,7 +293,16 @@ export default function OverviewScreen({ selectedPeriod, onPeriodChange, balance
                 <Wallet size={18} />
                 <span style={{ fontSize: 14, fontWeight: 500, opacity: 0.9 }}>Портфель</span>
               </div>
-              <Info size={16} style={{ opacity: 0.5 }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {lastUpdated && (
+                  <span style={{ fontSize: 10, opacity: 0.5 }}>
+                    {Math.floor((Date.now() - lastUpdated) / 60000) < 1
+                      ? 'только что'
+                      : `${Math.floor((Date.now() - lastUpdated) / 60000)} мин назад`}
+                  </span>
+                )}
+                <Info size={16} style={{ opacity: 0.5 }} />
+              </div>
             </div>
             {(() => {
               // Calculate client-side so hidden tokens are excluded instantly
