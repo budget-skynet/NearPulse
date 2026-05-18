@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Clock, ExternalLink, Copy, Info, Globe, Filter } from 'lucide-react';
 import { fetchTransactions } from '../services/api';
-import { useTelegram } from '../hooks/useTelegram';
 import Toast from './Toast';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -28,8 +27,7 @@ const FILTER_TABS = [
   { key: 'nft', label: 'NFT' },
 ];
 
-export default function TransactionsScreen() {
-  const { address } = useTelegram();
+export default function TransactionsScreen({ address }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

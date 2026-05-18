@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { fetchAnalytics, sendAiMessage } from '../services/api';
-import { useTelegram } from '../hooks/useTelegram';
 import LoadingSpinner from './LoadingSpinner';
 
 const ANALYST_PROMPTS = [
@@ -191,8 +190,7 @@ function AiAnalystPanel({ analyticsData, walletContext }) {
 }
 
 // ─── AnalyticsScreen ───────────────────────────────────────────────────────
-export default function AnalyticsScreen({ selectedPeriod, balanceData }) {
-  const { address } = useTelegram();
+export default function AnalyticsScreen({ address, selectedPeriod, balanceData }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTelegram } from './hooks/useTelegram';
+import { WalletProvider, useWallet } from './contexts/WalletContext';
 import { fetchUserBalance } from './services/api';
 import Header from './components/Header';
 import OverviewScreen from './components/OverviewScreen';
@@ -9,11 +10,10 @@ import GalleryScreenStable from './components/GalleryScreenStable';
 import MarketScreen from './components/MarketScreen';
 import LoadingSpinner from './components/LoadingSpinner';
 import AiChatWidget from './components/AiChatWidget';
-import { useTheme } from './hooks/useTheme';
 
-export default function App() {
-  const { tg, address } = useTelegram();
-  const { theme } = useTheme();
+function AppInner() {
+  const { tg } = useTelegram();
+  const { activeAddress } = useWallet();
   const [currentScreen, setCurrentScreen] = useState('overview');
   const [selectedPeriod, setSelectedPeriod] = useState('week');
   const [balanceData, setBalanceData] = useState(null);
@@ -22,7 +22,7 @@ export default function App() {
   const [retryCount, setRetryCount] = useState(0);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  const displayAddress = address || 'root.near';
+  const displayAddress = activeAddress;
 
   useEffect(() => {
     try {
@@ -99,21 +99,23 @@ export default function App() {
       <div className="p-4 pb-24 bg-secondary">
         {currentScreen === 'overview' && (
           <OverviewScreen
+            address={displayAddress}
             selectedPeriod={selectedPeriod}
             onPeriodChange={setSelectedPeriod}
             balanceData={balanceData}
             lastUpdated={lastUpdated}
           />
         )}
-        {currentScreen === 'transactions' && <TransactionsScreen />}
+        {currentScreen === 'transactions' && <TransactionsScreen address={displayAddress} />}
         {currentScreen === 'analytics' && (
           <AnalyticsScreen
+            address={displayAddress}
             selectedPeriod={selectedPeriod}
             balanceData={balanceData}
           />
         )}
         {currentScreen === 'market' && <MarketScreen />}
-        {currentScreen === 'gallery' && <GalleryScreenStable />}
+        {currentScreen === 'gallery' && <GalleryScreenStable address={displayAddress} />}
       </div>
 
       {/* AI Chat Widget — плавающая кнопка на главном экране */}
@@ -131,5 +133,13 @@ export default function App() {
         NearPulse — informational purposes only. Not financial advice.
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <WalletProvider>
+      <AppInner />
+    </WalletProvider>
   );
 }

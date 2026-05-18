@@ -4,7 +4,6 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
 import { fetchAnalytics, fetchPortfolioHistory } from '../services/api';
-import { useTelegram } from '../hooks/useTelegram';
 import { useTheme } from '../contexts/ThemeContext';
 
 function ChartTooltip({ active, payload, label }) {
@@ -134,8 +133,7 @@ function PortfolioChart({ address }) {
   );
 }
 
-export default function OverviewScreen({ selectedPeriod, onPeriodChange, balanceData, lastUpdated }) {
-  const { address } = useTelegram();
+export default function OverviewScreen({ address, selectedPeriod, onPeriodChange, balanceData, lastUpdated }) {
   const { theme }   = useTheme();
   const [timeRemaining,    setTimeRemaining]    = useState('');
   const [data,             setData]             = useState(null);

@@ -3,7 +3,6 @@
  * Никаких RPC вызовов. Поддерживает 300+ NFT через пагинацию.
  */
 import { useState, useEffect, useRef } from 'react';
-import { useTelegram } from '../hooks/useTelegram';
 import { API_BASE_URL as API_BASE } from '../services/api';
 const PER_PAGE = 24;
 
@@ -55,8 +54,7 @@ function NftCard({ token }) {
   );
 }
 
-export default function GalleryScreenStable() {
-  const { address } = useTelegram();
+export default function GalleryScreenStable({ address }) {
   const displayAddress = address || 'root.near';
   const [tokens, setTokens] = useState([]);
   const [total, setTotal] = useState(0);
