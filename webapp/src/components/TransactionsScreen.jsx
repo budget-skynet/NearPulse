@@ -36,6 +36,7 @@ export default function TransactionsScreen() {
   const [expandedTx, setExpandedTx] = useState(null);
   const [toast, setToast] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [retryCount, setRetryCount] = useState(0);
 
   const displayAddress = address || 'root.near';
 
@@ -64,7 +65,7 @@ export default function TransactionsScreen() {
     }
 
     loadTransactions();
-  }, [displayAddress]);
+  }, [displayAddress, retryCount]);
 
   // Фильтрация транзакций по типу
   const filteredTransactions = filter === 'all'
@@ -93,10 +94,22 @@ export default function TransactionsScreen() {
 
   if (error) {
     return (
-      <div className="glass-card rounded-xl p-4 border-red-500/30">
-        <div className="text-2xl mb-2 text-center">⚠️</div>
-        <div className="text-primary font-medium text-center mb-1">Ошибка загрузки</div>
-        <div className="text-secondary text-sm text-center">{error}</div>
+      <div className="glass-card rounded-xl p-4 text-center border-red-500/30">
+        <div className="text-2xl mb-2">⚠️</div>
+        <div className="text-primary font-medium mb-1">Ошибка загрузки</div>
+        <div className="text-secondary text-sm">{error}</div>
+        <button
+          onClick={() => setRetryCount(c => c + 1)}
+          style={{
+            marginTop: 14, padding: '8px 24px',
+            borderRadius: 'var(--radius-pill)',
+            background: 'var(--accent-gradient)',
+            color: '#fff', fontSize: 13, fontWeight: 600,
+            border: 'none', cursor: 'pointer',
+          }}
+        >
+          Повторить
+        </button>
       </div>
     );
   }

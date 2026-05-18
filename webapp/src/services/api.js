@@ -46,20 +46,21 @@ export async function checkApiHealth() {
   return response.json();
 }
 
-// Кэш аналитики
-let analyticsCache = { key: null, data: null, ts: 0 };
+// Кэш аналитики — Map<"address:period", {data, ts}>
+const analyticsCache = new Map();
 const ANALYTICS_CACHE_TTL = 60000;
 
 export async function fetchAnalytics(address, period = 'week') {
   const key = `${address}:${period}`;
   const now = Date.now();
-  if (analyticsCache.key === key && analyticsCache.data && (now - analyticsCache.ts) < ANALYTICS_CACHE_TTL) {
-    return analyticsCache.data;
+  const cached = analyticsCache.get(key);
+  if (cached && (now - cached.ts) < ANALYTICS_CACHE_TTL) {
+    return cached.data;
   }
   const response = await fetch(`${API_BASE_URL}/api/stats/${address}?period=${period}`);
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   const data = await response.json();
-  analyticsCache = { key, data, ts: Date.now() };
+  analyticsCache.set(key, { data, ts: Date.now() });
   return data;
 }
 

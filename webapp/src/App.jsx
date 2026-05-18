@@ -120,6 +120,16 @@ export default function App() {
       {currentScreen === 'overview' && (
         <AiChatWidget walletContext={balanceData} />
       )}
+
+      <div style={{
+        textAlign: 'center',
+        padding: '8px 16px 20px',
+        fontSize: 10,
+        color: 'var(--text-tertiary)',
+        opacity: 0.5,
+      }}>
+        NearPulse — informational purposes only. Not financial advice.
+      </div>
     </div>
   );
 }

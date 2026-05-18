@@ -176,6 +176,10 @@ def set_cache(key, data, ttl=CACHE_TTL):
 
 
 # ─── HTTP with retry ───────────────────────────────────────────────────────
+class ExternalServiceError(Exception):
+    """Raised when an external API fails after all retries."""
+
+
 def fetch_with_retry(url, *, retries=2, backoff=0.5, **kwargs):
     """GET request with exponential backoff. Retries on 5xx and network errors."""
     last_exc = None
@@ -186,13 +190,17 @@ def fetch_with_retry(url, *, retries=2, backoff=0.5, **kwargs):
                 return r
             if attempt < retries:
                 time.sleep(backoff * (2 ** attempt))
+            else:
+                raise ExternalServiceError(f"External API returned {r.status_code}: {url}")
         except (http_requests.exceptions.Timeout,
                 http_requests.exceptions.ConnectionError) as e:
             last_exc = e
             if attempt < retries:
                 time.sleep(backoff * (2 ** attempt))
+            else:
+                raise ExternalServiceError(f"External API unreachable: {url}") from e
     if last_exc:
-        raise last_exc
+        raise ExternalServiceError(f"External API unreachable: {url}") from last_exc
     return r
 
 
@@ -1009,7 +1017,8 @@ def api_balance(account_id):
         set_cache(cache_key, result)
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        status = 503 if isinstance(e, ExternalServiceError) else 500
+        return jsonify({"error": str(e)}), status
 
 
 @app.route("/api/transactions/<account_id>")
@@ -1050,7 +1059,8 @@ def api_transactions(account_id):
         set_cache(cache_key, result)
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        status = 503 if isinstance(e, ExternalServiceError) else 500
+        return jsonify({"error": str(e)}), status
 
 
 @app.route("/api/stats/<account_id>")
@@ -1083,7 +1093,8 @@ def api_stats(account_id):
         set_cache(cache_key, stats)
         return jsonify(stats)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        status = 503 if isinstance(e, ExternalServiceError) else 500
+        return jsonify({"error": str(e)}), status
 
 
 # BUGFIX: /api/analytics/<id> теперь использует реальную аналитику вместо заглушки
@@ -1146,7 +1157,8 @@ def ai_chat():
         })
     except Exception as e:
         print(f"[ai_chat] Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        status = 503 if isinstance(e, ExternalServiceError) else 500
+        return jsonify({"error": str(e)}), status
 
 
 @app.route("/", methods=["GET"])

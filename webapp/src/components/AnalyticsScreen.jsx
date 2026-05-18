@@ -196,6 +196,7 @@ export default function AnalyticsScreen({ selectedPeriod, balanceData }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const displayAddress = address || 'root.near';
 
@@ -213,7 +214,7 @@ export default function AnalyticsScreen({ selectedPeriod, balanceData }) {
       }
     }
     loadAnalytics();
-  }, [displayAddress, selectedPeriod]);
+  }, [displayAddress, selectedPeriod, retryCount]);
 
   const categoryLabels = {
     gaming: '🎮 Gaming',
@@ -232,6 +233,18 @@ export default function AnalyticsScreen({ selectedPeriod, balanceData }) {
           <div className="text-2xl mb-2">⚠️</div>
           <div className="text-primary font-medium mb-1">Ошибка загрузки аналитики</div>
           <div className="text-secondary text-sm">{error}</div>
+          <button
+            onClick={() => setRetryCount(c => c + 1)}
+            style={{
+              marginTop: 14, padding: '8px 24px',
+              borderRadius: 'var(--radius-pill)',
+              background: 'var(--accent-gradient)',
+              color: '#fff', fontSize: 13, fontWeight: 600,
+              border: 'none', cursor: 'pointer',
+            }}
+          >
+            Повторить
+          </button>
         </div>
       </div>
     );
